@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import aiDetectionService from '../services/aiDetectionService'
 import { searchFood } from '../data/comprehensiveFoodDatabase'
+import { performCompleteAnalysis } from '../services/foodAnalysisService'
 
 export const useFoodScanner = () => {
   const [isLoading, setIsLoading] = useState(false)
@@ -11,19 +12,39 @@ export const useFoodScanner = () => {
     setError(null)
 
     try {
+      console.log('🔍 Starting food scan with mode:', mode)
       let result
 
       if (mode === 'auto' || mode === 'real-food') {
-        // Use AI detection for automatic food recognition
-        result = await aiDetectionService.enhancedImageAnalysis(imageData)
-      } else if (mode === 'packaged-food') {
-        // For packaged foods, try to detect text/barcodes first, then AI
-        result = await aiDetectionService.enhancedImageAnalysis(imageData)
+        // Use Clarifai for real food recognition
+        console.log('🤖 Using Clarifai AI for food recognition...')
+        const clarifaiResult = await performCompleteAnalysis(imageData)
         
-        // If AI doesn't find packaged food characteristics, simulate barcode scan
-        if (!result.packaging?.detected) {
-          result = await simulatePackagedFoodScan(imageData)
+        if (clarifaiResult.success) {
+          // Convert Clarifai result to expected format
+          result = {
+            success: true,
+            confidence: parseFloat(clarifaiResult.analysis.confidence) / 100,
+            detectedFood: {
+              name: clarifaiResult.analysis.foodName,
+              category: getCategoryFromFood(clarifaiResult.analysis.foodName),
+              nutrition: clarifaiResult.analysis.nutrition,
+              ingredients: [],
+              allergens: []
+            },
+            mode: 'real-food',
+            analysisType: 'clarifai_ai',
+            clarifaiData: clarifaiResult.analysis,
+            message: `Detected ${clarifaiResult.analysis.foodName} with ${clarifaiResult.analysis.confidence}% confidence`
+          }
+        } else {
+          // Fallback to existing AI detection
+          console.log('⚠️ Clarifai failed, falling back to existing AI...')
+          result = await aiDetectionService.enhancedImageAnalysis(imageData)
         }
+      } else if (mode === 'packaged-food') {
+        // For packaged foods, try barcode scan first, then Clarifai
+        result = await simulatePackagedFoodScan(imageData)
       }
 
       // Enhance result with additional processing
@@ -37,8 +58,9 @@ export const useFoodScanner = () => {
           result.portionEstimate.multiplier
         )
 
-        // Add recommendations
-        result.recommendations = generateRecommendations(result.detectedFood)
+        // Add recommendations (use Clarifai recommendations if available)
+        result.recommendations = result.clarifaiData?.recommendations || 
+                               generateRecommendations(result.detectedFood)
       }
 
       return {
@@ -55,12 +77,15 @@ export const useFoodScanner = () => {
           portionSize: result.portionEstimate,
           alternatives: result.alternatives,
           recommendations: result.recommendations,
-          barcode: result.barcode || null
+          barcode: result.barcode || null,
+          healthScore: result.clarifaiData?.healthScore,
+          healthCategory: result.clarifaiData?.healthCategory,
+          isDemoMode: result.clarifaiData?.isDemoMode
         } : null,
         message: result.message
       }
     } catch (err) {
-      console.error('Food scanning error:', err)
+      console.error('❌ Food scanning error:', err)
       setError('Failed to scan food item')
       return {
         success: false,
@@ -143,6 +168,37 @@ export const useFoodScanner = () => {
       adjusted[key] = Math.round(baseNutrition[key] * multiplier * 100) / 100
     })
     return adjusted
+  }
+
+  // Helper function to categorize foods based on name
+  const getCategoryFromFood = (foodName) => {
+    const name = foodName.toLowerCase()
+    
+    if (name.includes('apple') || name.includes('banana') || name.includes('orange') || 
+        name.includes('berry') || name.includes('fruit')) {
+      return 'fruits'
+    }
+    if (name.includes('lettuce') || name.includes('carrot') || name.includes('tomato') || 
+        name.includes('vegetable') || name.includes('salad')) {
+      return 'vegetables'
+    }
+    if (name.includes('chicken') || name.includes('beef') || name.includes('fish') || 
+        name.includes('meat') || name.includes('protein')) {
+      return 'proteins'
+    }
+    if (name.includes('rice') || name.includes('bread') || name.includes('pasta') || 
+        name.includes('grain') || name.includes('cereal')) {
+      return 'grains'
+    }
+    if (name.includes('milk') || name.includes('cheese') || name.includes('yogurt') || 
+        name.includes('dairy')) {
+      return 'dairy'
+    }
+    if (name.includes('nuts') || name.includes('seeds') || name.includes('almond')) {
+      return 'nuts_seeds'
+    }
+    
+    return 'prepared_foods' // Default category
   }
 
   // Generate food recommendations

@@ -216,10 +216,17 @@ export const useHealthMatrix = () => {
     setIsCalculating(true)
     
     try {
-      const { nutrition, ingredients, name } = foodData
+      const { nutrition, ingredients, name, healthScore, healthCategory, analysisType } = foodData
       
-      // Calculate base health score
-      const baseScore = calculateBaseHealthScore(nutrition, ingredients)
+      // Use Clarifai health score if available, otherwise calculate our own
+      let baseScore
+      if (healthScore && analysisType === 'clarifai_ai') {
+        console.log('🎯 Using Clarifai health score:', healthScore)
+        baseScore = healthScore
+      } else {
+        console.log('📊 Calculating traditional health score')
+        baseScore = calculateBaseHealthScore(nutrition, ingredients)
+      }
       
       // Calculate diet-specific scores
       const dietScores = {}
@@ -257,7 +264,7 @@ export const useHealthMatrix = () => {
         radarData,
         trafficLight: getTrafficLightStatus(baseScore),
         processingLevel: calculateProcessingLevel(ingredients),
-        recommendations: generateRecommendations(nutrition, ingredients, dietScores)
+        recommendations: generateRecommendations(nutrition, ingredients, dietScores, foodData.recommendations)
       }
     } catch (error) {
       console.error('Health matrix calculation error:', error)
@@ -267,30 +274,52 @@ export const useHealthMatrix = () => {
     }
   }
   
-  const generateRecommendations = (nutrition, ingredients, dietScores) => {
+  const generateRecommendations = (nutrition, ingredients, dietScores, clarifaiRecommendations = []) => {
     const recommendations = []
     
-    // General recommendations
+    // Add Clarifai recommendations first if available
+    if (clarifaiRecommendations && Array.isArray(clarifaiRecommendations)) {
+      console.log('🤖 Adding Clarifai recommendations:', clarifaiRecommendations.length)
+      clarifaiRecommendations.forEach(rec => {
+        if (typeof rec === 'object' && rec.message) {
+          recommendations.push(`${rec.icon || '💡'} ${rec.title}: ${rec.message}`)
+        } else if (typeof rec === 'string') {
+          recommendations.push(`🤖 ${rec}`)
+        }
+      })
+    }
+    
+    // General nutritional recommendations
     if ((nutrition?.sugar || 0) > 15) {
-      recommendations.push('High sugar content - consider alternatives with less added sugar')
+      recommendations.push('⚠️ High sugar content - consider alternatives with less added sugar')
     }
     
     if ((nutrition?.sodium || 0) > 600) {
-      recommendations.push('High sodium - look for low-sodium versions')
+      recommendations.push('🧂 High sodium - look for low-sodium versions')
     }
     
     if ((nutrition?.fiber || 0) < 3) {
-      recommendations.push('Low fiber - pair with high-fiber foods like vegetables')
+      recommendations.push('🌾 Low fiber - pair with high-fiber foods like vegetables')
+    }
+    
+    if ((nutrition?.protein || 0) > 20) {
+      recommendations.push('💪 Great protein source - excellent for muscle health')
+    }
+    
+    if ((nutrition?.vitaminC || 0) > 20) {
+      recommendations.push('🍊 Rich in Vitamin C - supports immune system')
     }
     
     // Diet-specific recommendations
     Object.entries(dietScores).forEach(([diet, data]) => {
       if (data.score < 40) {
-        recommendations.push(`Not ideal for ${diet} diet - ${data.trafficLight.status}`)
+        recommendations.push(`❌ Not ideal for ${diet} diet - ${data.trafficLight.status}`)
+      } else if (data.score > 70) {
+        recommendations.push(`✅ Great choice for ${diet} diet`)
       }
     })
     
-    return recommendations
+    return recommendations.slice(0, 8) // Limit to 8 recommendations
   }
   
   return {

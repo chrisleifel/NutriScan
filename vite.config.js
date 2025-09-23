@@ -24,18 +24,33 @@ export default defineConfig({
           {
             src: 'pwa-192x192.png',
             sizes: '192x192',
-            type: 'image/png'
+            type: 'image/png',
+            purpose: 'any maskable'
           },
           {
             src: 'pwa-512x512.png',
             sizes: '512x512',
-            type: 'image/png'
+            type: 'image/png',
+            purpose: 'any maskable'
+          },
+          {
+            src: 'apple-touch-icon.png',
+            sizes: '180x180',
+            type: 'image/png',
+            purpose: 'any'
           }
         ],
         categories: ['health', 'nutrition', 'lifestyle'],
         start_url: '/',
         scope: '/',
-        orientation: 'portrait'
+        orientation: 'portrait',
+        prefer_related_applications: false,
+        lang: 'en-US',
+        dir: 'ltr',
+        display_override: ['window-controls-overlay', 'standalone', 'minimal-ui'],
+        edge_side_panel: {
+          preferred_width: 480
+        }
       },
       workbox: {
         globPatterns: ['**/*.{js,css,html,ico,png,svg}'],
@@ -57,7 +72,13 @@ export default defineConfig({
   ],
   server: {
     host: '0.0.0.0',
-    port: 3000
+    port: 3001,
+    https: false, // We'll use HTTP for simplicity during development
+    cors: true,
+    headers: {
+      'Cross-Origin-Embedder-Policy': 'unsafe-none',
+      'Cross-Origin-Opener-Policy': 'same-origin'
+    }
   },
   build: {
     rollupOptions: {

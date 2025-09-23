@@ -25,7 +25,19 @@ const ScanResults = ({ results, onReset, onAddToLog }) => {
   const [activeTab, setActiveTab] = useState('overview')
   const [selectedMealType, setSelectedMealType] = useState(null)
   
-  const { name, nutrition, ingredients, healthMatrix, image, mode } = results
+  const { 
+    name, 
+    nutrition, 
+    ingredients, 
+    healthMatrix, 
+    image, 
+    mode, 
+    analysisType, 
+    confidence, 
+    healthScore, 
+    healthCategory,
+    isDemoMode
+  } = results
   const { baseScore, dietScores, radarData, trafficLight, recommendations } = healthMatrix
   
   const getScoreColor = (score) => {
