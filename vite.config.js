@@ -86,8 +86,7 @@ export default defineConfig({
         manualChunks: {
           vendor: ['react', 'react-dom'],
           three: ['three', '@react-three/fiber', '@react-three/drei'],
-          charts: ['chart.js', 'react-chartjs-2'],
-          ai: ['tensorflow', '@tensorflow/tfjs']
+          charts: ['chart.js', 'react-chartjs-2']
         }
       }
     }
