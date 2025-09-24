@@ -1,35 +1,21 @@
-// Clarifai Configuration for Food Recognition
-import { ClarifaiStub, grpc } from "clarifai-nodejs-grpc";
+// Google Vision API Configuration for Food Recognition
 
 // Configuration constants
-export const CLARIFAI_CONFIG = {
+export const GOOGLE_VISION_CONFIG = {
   // Using environment variables for security
-  PAT: import.meta.env.VITE_CLARIFAI_PAT || 'YOUR_CLARIFAI_PAT_HERE',
-  USER_ID: import.meta.env.VITE_CLARIFAI_USER_ID || 'clarifai',
-  APP_ID: import.meta.env.VITE_CLARIFAI_APP_ID || 'main',
-  
-  // Food recognition model IDs
-  MODELS: {
-    FOOD_GENERAL: 'bd367be194cf45149e75f01d59f77ba7',
-    FOOD_ITEMS: 'c0c0ac362b03416da06ab3fa36fb58e3',
-    NUTRITION: 'nutrition-model-id' // Custom nutrition model if available
-  },
+  API_KEY: import.meta.env.VITE_GOOGLE_VISION_API_KEY || 'YOUR_GOOGLE_VISION_API_KEY_HERE',
   
   // API endpoints
   ENDPOINTS: {
-    PREDICT: 'https://api.clarifai.com/v2/models/{model_id}/versions/{version_id}/outputs'
+    ANNOTATE: 'https://vision.googleapis.com/v1/images:annotate'
+  },
+  
+  // Feature types for food recognition
+  FEATURES: {
+    LABEL_DETECTION: 'LABEL_DETECTION',
+    TEXT_DETECTION: 'TEXT_DETECTION',
+    OBJECT_LOCALIZATION: 'OBJECT_LOCALIZATION'
   }
-};
-
-// Initialize Clarifai client
-export const initializeClarifai = () => {
-  const stub = ClarifaiStub.grpc();
-  
-  // Set authentication metadata
-  const metadata = new grpc.Metadata();
-  metadata.set("authorization", `Key ${CLARIFAI_CONFIG.PAT}`);
-  
-  return { stub, metadata };
 };
 
 // Food nutrition database mapping
@@ -87,7 +73,7 @@ export const FOOD_NUTRITION_DATABASE = {
     calcium: 47,
     iron: 3.6
   },
-  'chicken breast': {
+  'chicken': {
     calories: 165,
     protein: 31,
     carbs: 0,
@@ -164,6 +150,71 @@ export const FOOD_NUTRITION_DATABASE = {
     vitaminC: 13.7,
     calcium: 10,
     iron: 0.27
+  },
+  'fish': {
+    calories: 206,
+    protein: 22,
+    carbs: 0,
+    fat: 12,
+    fiber: 0,
+    sugar: 0,
+    sodium: 59,
+    potassium: 314,
+    vitaminC: 0,
+    calcium: 16,
+    iron: 0.38
+  },
+  'potato': {
+    calories: 77,
+    protein: 2,
+    carbs: 17,
+    fat: 0.1,
+    fiber: 2.2,
+    sugar: 0.8,
+    sodium: 6,
+    potassium: 421,
+    vitaminC: 19.7,
+    calcium: 12,
+    iron: 0.81
+  },
+  'carrot': {
+    calories: 41,
+    protein: 0.9,
+    carbs: 10,
+    fat: 0.2,
+    fiber: 2.8,
+    sugar: 4.7,
+    sodium: 69,
+    potassium: 320,
+    vitaminC: 5.9,
+    calcium: 33,
+    iron: 0.3
+  },
+  'broccoli': {
+    calories: 34,
+    protein: 2.8,
+    carbs: 7,
+    fat: 0.4,
+    fiber: 2.6,
+    sugar: 1.5,
+    sodium: 33,
+    potassium: 316,
+    vitaminC: 89.2,
+    calcium: 47,
+    iron: 0.73
+  },
+  'pasta': {
+    calories: 131,
+    protein: 5,
+    carbs: 25,
+    fat: 1.1,
+    fiber: 1.8,
+    sugar: 0.6,
+    sodium: 6,
+    potassium: 44,
+    vitaminC: 0,
+    calcium: 7,
+    iron: 1.28
   }
 };
 
@@ -196,4 +247,4 @@ export const getHealthCategory = (score) => {
   return { category: 'Very Poor', color: '#dc2626', icon: '❌' };
 };
 
-export default CLARIFAI_CONFIG;
+export default GOOGLE_VISION_CONFIG;

@@ -16,34 +16,34 @@ export const useFoodScanner = () => {
       let result
 
       if (mode === 'auto' || mode === 'real-food') {
-        // Use Clarifai for real food recognition
-        console.log('🤖 Using Clarifai AI for food recognition...')
-        const clarifaiResult = await performCompleteAnalysis(imageData)
+        // Use demo/fallback mode for now (Google Vision API integration available in /integrations folder)
+        console.log('🎭 Using demo food recognition mode...')
+        const demoResult = await performCompleteAnalysis(imageData)
         
-        if (clarifaiResult.success) {
-          // Convert Clarifai result to expected format
+        if (demoResult.success) {
+          // Convert demo result to expected format
           result = {
             success: true,
-            confidence: parseFloat(clarifaiResult.analysis.confidence) / 100,
+            confidence: parseFloat(demoResult.analysis.confidence) / 100,
             detectedFood: {
-              name: clarifaiResult.analysis.foodName,
-              category: getCategoryFromFood(clarifaiResult.analysis.foodName),
-              nutrition: clarifaiResult.analysis.nutrition,
+              name: demoResult.analysis.foodName,
+              category: getCategoryFromFood(demoResult.analysis.foodName),
+              nutrition: demoResult.analysis.nutrition,
               ingredients: [],
               allergens: []
             },
             mode: 'real-food',
-            analysisType: 'clarifai_ai',
-            clarifaiData: clarifaiResult.analysis,
-            message: `Detected ${clarifaiResult.analysis.foodName} with ${clarifaiResult.analysis.confidence}% confidence`
+            analysisType: 'demo_mode',
+            demoData: demoResult.analysis,
+            message: `Demo: Detected ${demoResult.analysis.foodName} with ${demoResult.analysis.confidence}% confidence`
           }
         } else {
-          // Fallback to existing AI detection
-          console.log('⚠️ Clarifai failed, falling back to existing AI...')
+          // Secondary fallback
+          console.log('⚠️ Demo failed, using AI detection fallback...')
           result = await aiDetectionService.enhancedImageAnalysis(imageData)
         }
       } else if (mode === 'packaged-food') {
-        // For packaged foods, try barcode scan first, then Clarifai
+        // For packaged foods, try barcode scan first, then Google Vision
         result = await simulatePackagedFoodScan(imageData)
       }
 
@@ -58,8 +58,8 @@ export const useFoodScanner = () => {
           result.portionEstimate.multiplier
         )
 
-        // Add recommendations (use Clarifai recommendations if available)
-        result.recommendations = result.clarifaiData?.recommendations || 
+        // Add recommendations (use Google Vision recommendations if available)
+        result.recommendations = result.googleVisionData?.recommendations || 
                                generateRecommendations(result.detectedFood)
       }
 
@@ -78,9 +78,9 @@ export const useFoodScanner = () => {
           alternatives: result.alternatives,
           recommendations: result.recommendations,
           barcode: result.barcode || null,
-          healthScore: result.clarifaiData?.healthScore,
-          healthCategory: result.clarifaiData?.healthCategory,
-          isDemoMode: result.clarifaiData?.isDemoMode
+          healthScore: result.googleVisionData?.healthScore,
+          healthCategory: result.googleVisionData?.healthCategory,
+          isDemoMode: result.googleVisionData?.isDemoMode
         } : null,
         message: result.message
       }

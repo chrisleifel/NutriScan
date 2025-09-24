@@ -1,122 +1,229 @@
-// Food Analysis Service using Clarifai API
-import { 
-  CLARIFAI_CONFIG, 
-  FOOD_NUTRITION_DATABASE, 
-  calculateHealthScore, 
-  getHealthCategory 
-} from '../config/clarifai.js';
+// Food Analysis Service - Demo/Fallback Mode
+// Google Vision integration moved to src/integrations/google-vision/ for future use
 
-// Convert image to base64 for Clarifai API
-const imageToBase64 = (imageFile) => {
-  return new Promise((resolve, reject) => {
-    if (imageFile instanceof File) {
-      const reader = new FileReader();
-      reader.onload = () => {
-        const base64 = reader.result.split(',')[1];
-        resolve(base64);
-      };
-      reader.onerror = reject;
-      reader.readAsDataURL(imageFile);
-    } else if (typeof imageFile === 'string') {
-      // If it's already a data URL, extract base64
-      const base64 = imageFile.split(',')[1] || imageFile;
-      resolve(base64);
-    } else {
-      reject(new Error('Invalid image format'));
-    }
-  });
-};
-
-// Analyze food using Clarifai API
-export const analyzeFoodWithClarifai = async (imageData) => {
-  try {
-    console.log('🔍 Starting food analysis with Clarifai...');
-    
-    // Convert image to base64
-    const base64Image = await imageToBase64(imageData);
-    
-    // Prepare API request
-    const requestBody = {
-      user_app_id: {
-        user_id: CLARIFAI_CONFIG.USER_ID,
-        app_id: CLARIFAI_CONFIG.APP_ID
-      },
-      inputs: [
-        {
-          data: {
-            image: {
-              base64: base64Image
-            }
-          }
-        }
-      ]
-    };
-
-    // Make API call to Clarifai
-    const response = await fetch(
-      `https://api.clarifai.com/v2/models/${CLARIFAI_CONFIG.MODELS.FOOD_GENERAL}/outputs`,
-      {
-        method: 'POST',
-        headers: {
-          'Accept': 'application/json',
-          'Content-Type': 'application/json',
-          'Authorization': `Key ${CLARIFAI_CONFIG.PAT}`
-        },
-        body: JSON.stringify(requestBody)
-      }
-    );
-
-    if (!response.ok) {
-      throw new Error(`Clarifai API error: ${response.status}`);
-    }
-
-    const result = await response.json();
-    console.log('📡 Clarifai API response:', result);
-
-    // Process the results
-    if (result.outputs && result.outputs[0] && result.outputs[0].data) {
-      const concepts = result.outputs[0].data.concepts || [];
-      const detectedFoods = concepts
-        .filter(concept => concept.value > 0.7) // Only high confidence predictions
-        .slice(0, 5) // Top 5 predictions
-        .map(concept => ({
-          name: concept.name.toLowerCase(),
-          confidence: (concept.value * 100).toFixed(1),
-          id: concept.id
-        }));
-
-      console.log('🍎 Detected foods:', detectedFoods);
-      
-      return {
-        success: true,
-        detectedFoods,
-        timestamp: new Date().toISOString()
-      };
-    } else {
-      throw new Error('No food concepts detected');
-    }
-
-  } catch (error) {
-    console.error('❌ Food analysis error:', error);
-    
-    // Fallback: Return demo analysis
-    return getFallbackAnalysis();
+// Fallback nutrition database
+const FOOD_NUTRITION_DATABASE = {
+  // Common foods with their nutritional information per 100g
+  'apple': {
+    calories: 52,
+    protein: 0.3,
+    carbs: 14,
+    fat: 0.2,
+    fiber: 2.4,
+    sugar: 10,
+    sodium: 1,
+    potassium: 107,
+    vitaminC: 4.6,
+    calcium: 6,
+    iron: 0.12
+  },
+  'banana': {
+    calories: 89,
+    protein: 1.1,
+    carbs: 23,
+    fat: 0.3,
+    fiber: 2.6,
+    sugar: 12,
+    sodium: 1,
+    potassium: 358,
+    vitaminC: 8.7,
+    calcium: 5,
+    iron: 0.26
+  },
+  'orange': {
+    calories: 47,
+    protein: 0.9,
+    carbs: 12,
+    fat: 0.1,
+    fiber: 2.4,
+    sugar: 9,
+    sodium: 0,
+    potassium: 181,
+    vitaminC: 53.2,
+    calcium: 40,
+    iron: 0.1
+  },
+  'bread': {
+    calories: 265,
+    protein: 9,
+    carbs: 49,
+    fat: 3.2,
+    fiber: 2.7,
+    sugar: 5,
+    sodium: 491,
+    potassium: 115,
+    vitaminC: 0,
+    calcium: 47,
+    iron: 3.6
+  },
+  'chicken': {
+    calories: 165,
+    protein: 31,
+    carbs: 0,
+    fat: 3.6,
+    fiber: 0,
+    sugar: 0,
+    sodium: 74,
+    potassium: 256,
+    vitaminC: 0,
+    calcium: 15,
+    iron: 0.9
+  },
+  'rice': {
+    calories: 130,
+    protein: 2.7,
+    carbs: 28,
+    fat: 0.3,
+    fiber: 0.4,
+    sugar: 0.1,
+    sodium: 5,
+    potassium: 55,
+    vitaminC: 0,
+    calcium: 28,
+    iron: 0.8
+  },
+  'egg': {
+    calories: 155,
+    protein: 13,
+    carbs: 1.1,
+    fat: 11,
+    fiber: 0,
+    sugar: 1.1,
+    sodium: 124,
+    potassium: 138,
+    vitaminC: 0,
+    calcium: 56,
+    iron: 1.75
+  },
+  'milk': {
+    calories: 42,
+    protein: 3.4,
+    carbs: 5,
+    fat: 1,
+    fiber: 0,
+    sugar: 5,
+    sodium: 44,
+    potassium: 150,
+    vitaminC: 0,
+    calcium: 113,
+    iron: 0.03
+  },
+  'cheese': {
+    calories: 113,
+    protein: 7,
+    carbs: 1,
+    fat: 9,
+    fiber: 0,
+    sugar: 1,
+    sodium: 215,
+    potassium: 76,
+    vitaminC: 0,
+    calcium: 202,
+    iron: 0.14
+  },
+  'tomato': {
+    calories: 18,
+    protein: 0.9,
+    carbs: 3.9,
+    fat: 0.2,
+    fiber: 1.2,
+    sugar: 2.6,
+    sodium: 5,
+    potassium: 237,
+    vitaminC: 13.7,
+    calcium: 10,
+    iron: 0.27
+  },
+  'fish': {
+    calories: 206,
+    protein: 22,
+    carbs: 0,
+    fat: 12,
+    fiber: 0,
+    sugar: 0,
+    sodium: 59,
+    potassium: 314,
+    vitaminC: 0,
+    calcium: 16,
+    iron: 0.38
+  },
+  'potato': {
+    calories: 77,
+    protein: 2,
+    carbs: 17,
+    fat: 0.1,
+    fiber: 2.2,
+    sugar: 0.8,
+    sodium: 6,
+    potassium: 421,
+    vitaminC: 19.7,
+    calcium: 12,
+    iron: 0.81
+  },
+  'salad': {
+    calories: 20,
+    protein: 1.4,
+    carbs: 4,
+    fat: 0.2,
+    fiber: 2.1,
+    sugar: 2,
+    sodium: 10,
+    potassium: 194,
+    vitaminC: 18,
+    calcium: 36,
+    iron: 0.86
   }
 };
 
-// Fallback analysis for demo purposes
+// Health scoring algorithm
+const calculateHealthScore = (nutritionData) => {
+  let score = 50; // Base score
+  
+  // Positive factors
+  if (nutritionData.protein > 10) score += 15;
+  if (nutritionData.fiber > 3) score += 15;
+  if (nutritionData.vitaminC > 10) score += 10;
+  if (nutritionData.potassium > 200) score += 10;
+  
+  // Negative factors
+  if (nutritionData.sodium > 300) score -= 20;
+  if (nutritionData.sugar > 15) score -= 15;
+  if (nutritionData.fat > 20) score -= 10;
+  if (nutritionData.calories > 300) score -= 10;
+  
+  // Ensure score is between 0 and 100
+  return Math.max(0, Math.min(100, score));
+};
+
+// Get health category based on score
+const getHealthCategory = (score) => {
+  if (score >= 80) return { category: 'Excellent', color: '#10b981', icon: '🌟' };
+  if (score >= 60) return { category: 'Good', color: '#84cc16', icon: '👍' };
+  if (score >= 40) return { category: 'Moderate', color: '#f59e0b', icon: '⚖️' };
+  if (score >= 20) return { category: 'Poor', color: '#ef4444', icon: '⚠️' };
+  return { category: 'Very Poor', color: '#dc2626', icon: '❌' };
+};
+
+// Demo/fallback analysis
 const getFallbackAnalysis = () => {
+  // Rotate through different demo foods for variety
   const demoFoods = [
     { name: 'apple', confidence: '94.2', id: 'demo-apple' },
-    { name: 'fruit', confidence: '89.7', id: 'demo-fruit' },
-    { name: 'healthy food', confidence: '76.3', id: 'demo-healthy' }
+    { name: 'banana', confidence: '89.7', id: 'demo-banana' },
+    { name: 'orange', confidence: '87.3', id: 'demo-orange' },
+    { name: 'salad', confidence: '91.5', id: 'demo-salad' },
+    { name: 'chicken', confidence: '88.9', id: 'demo-chicken' }
   ];
-
-  console.log('🎭 Using fallback demo analysis');
+  
+  // Pick a random food for demo
+  const randomIndex = Math.floor(Math.random() * demoFoods.length);
+  const selectedFood = demoFoods[randomIndex];
+  
+  console.log('🎭 Using demo analysis for:', selectedFood.name);
   
   return {
     success: true,
-    detectedFoods: demoFoods,
+    detectedFoods: [selectedFood, ...demoFoods.filter((_, i) => i !== randomIndex).slice(0, 2)],
     timestamp: new Date().toISOString(),
     isDemoMode: true
   };
@@ -181,13 +288,16 @@ export const getNutritionInfo = (detectedFoods) => {
   };
 };
 
-// Complete food analysis pipeline
+// Complete food analysis pipeline - Currently using demo mode only
 export const performCompleteAnalysis = async (imageData) => {
   try {
-    console.log('🚀 Starting complete food analysis pipeline...');
+    console.log('🚀 Starting demo food analysis pipeline...');
     
-    // Step 1: Analyze image with Clarifai
-    const analysisResult = await analyzeFoodWithClarifai(imageData);
+    // Simulate processing time
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    
+    // Use demo analysis
+    const analysisResult = getFallbackAnalysis();
     
     if (!analysisResult.success || !analysisResult.detectedFoods.length) {
       throw new Error('No food detected in image');
@@ -199,7 +309,7 @@ export const performCompleteAnalysis = async (imageData) => {
     // Step 3: Generate recommendations
     const recommendations = generateRecommendations(nutritionInfo);
     
-    console.log('🎉 Complete analysis finished successfully!');
+    console.log('🎉 Demo analysis finished successfully!');
     
     return {
       success: true,
@@ -207,12 +317,12 @@ export const performCompleteAnalysis = async (imageData) => {
         ...nutritionInfo,
         allDetectedFoods: analysisResult.detectedFoods,
         recommendations,
-        isDemoMode: analysisResult.isDemoMode || false
+        isDemoMode: true
       }
     };
     
   } catch (error) {
-    console.error('❌ Complete analysis failed:', error);
+    console.error('❌ Analysis failed:', error);
     
     return {
       success: false,
@@ -293,12 +403,20 @@ const generateRecommendations = (nutritionInfo) => {
     });
   }
   
+  // Add demo mode notice
+  recommendations.push({
+    type: 'info',
+    icon: '🎭',
+    title: 'Demo Mode',
+    message: 'Currently running in demo mode. Connect Google Vision API for real food recognition.',
+    priority: 'low'
+  });
+  
   return recommendations;
 };
 
 // Export all functions
 export default {
-  analyzeFoodWithClarifai,
   getNutritionInfo,
   performCompleteAnalysis,
   generateRecommendations
