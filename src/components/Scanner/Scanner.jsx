@@ -45,11 +45,12 @@ const Scanner = () => {
         return false
       }
 
+      // iOS Safari-friendly camera constraints
       const stream = await navigator.mediaDevices.getUserMedia({ 
         video: { 
-          facingMode: { ideal: "environment" },
-          width: { ideal: 1280, min: 640 },
-          height: { ideal: 720, min: 480 }
+          facingMode: "environment",
+          width: { ideal: 1280 },
+          height: { ideal: 720 }
         } 
       })
       stream.getTracks().forEach(track => track.stop()) // Clean up immediately
@@ -225,7 +226,7 @@ const Scanner = () => {
   }
   
   return (
-    <div className="min-h-screen safe-area-top safe-area-bottom p-4">
+    <div className="min-h-screen safe-area-top safe-area-bottom p-4 pb-8">
       {/* Hero Section */}
       <div className="text-center mb-8">
         <motion.div
@@ -294,6 +295,7 @@ const Scanner = () => {
                   ref={fileInputRef}
                   type="file"
                   accept="image/*"
+                  capture="environment"
                   multiple={false}
                   onChange={handleFileUpload}
                   className="hidden"
@@ -308,9 +310,7 @@ const Scanner = () => {
                 screenshotFormat="image/jpeg"
                 className="w-full h-full object-cover"
                 videoConstraints={{
-                  width: { ideal: 1280 },
-                  height: { ideal: 720 },
-                  facingMode: { ideal: "environment" }
+                  facingMode: "environment"
                 }}
                 onUserMediaError={(error) => {
                   console.error('Camera error:', error)
@@ -403,6 +403,7 @@ const Scanner = () => {
                 ref={fileInputRef}
                 type="file"
                 accept="image/*"
+                capture="environment"
                 multiple={false}
                 onChange={handleFileUpload}
                 className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"

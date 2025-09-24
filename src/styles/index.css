@@ -6,6 +6,9 @@
   html {
     -webkit-tap-highlight-color: transparent;
     touch-action: manipulation;
+    /* iOS Safari fixes */
+    -webkit-text-size-adjust: 100%;
+    height: 100%;
   }
   
   body {
@@ -15,10 +18,23 @@
     overscroll-behavior: none;
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     min-height: 100vh;
+    /* iOS Safari viewport fix */
+    min-height: -webkit-fill-available;
+    height: 100%;
+    /* Prevent iOS Safari bounce */
+    overflow-x: hidden;
+    position: relative;
   }
 
   * {
     box-sizing: border-box;
+  }
+  
+  /* iOS Safari specific fixes */
+  @supports (-webkit-touch-callout: none) {
+    body {
+      min-height: -webkit-fill-available;
+    }
   }
 }
 
@@ -101,5 +117,32 @@
   
   .safe-area-right {
     padding-right: env(safe-area-inset-right);
+  }
+  
+  /* iOS touch improvements */
+  .touch-friendly {
+    -webkit-tap-highlight-color: transparent;
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    user-select: none;
+    touch-action: manipulation;
+  }
+  
+  /* iOS file input improvements */
+  input[type="file"] {
+    -webkit-appearance: none;
+    appearance: none;
+  }
+  
+  /* Improve button interactions on iOS */
+  .btn-primary, .btn-secondary {
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+    -webkit-user-select: none;
+    user-select: none;
+  }
+  
+  .btn-primary:active, .btn-secondary:active {
+    transform: scale(0.95);
   }
 }
